@@ -1,0 +1,26 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: webim-server
+  datasource:
+    url: jdbc:mysql://@MYSQL_HOST@:@MYSQL_PORT@/webim?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=GMT%2B8
+    username: @MYSQL_USER@
+    password: @MYSQL_PASSWORD@
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+    database: 0
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.webim.entity
+
+# Netty 配置
+netty:
+  websocket:
+    port: 8888
+    path: /ws

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebIM | 高性能智能客服系统</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- 登录面板 -->
+        <div id="login-panel" class="glass-module">
+            <h1>WebIM 登陆</h1>
+            <p>基于 Netty & Redis 的实时通讯系统</p>
+            <div class="user-selector">
+                <button onclick="loginAs('USER')">作为用户进入</button>
+                <button onclick="loginAs('AGENT')" class="secondary">客服控制中心</button>
+            </div>
+            <div id="id-input-group" style="margin-top: 20px;">
+                <input type="number" id="user-id" placeholder="请输入 ID (例: 1001)" />
+            </div>
+        </div>
+
+        <!-- 聊天主窗口 -->
+        <div id="chat-window" class="glass-module hidden">
+            <div class="chat-header">
+                <div class="status-indicator online"></div>
+                <div class="header-info">
+                    <span id="target-name">正在连接...</span>
+                    <small id="connection-status">正在连接 WebSocket</small>
+                </div>
+                <div class="header-actions">
+                    <button onclick="logout()" title="登出">×</button>
+                </div>
+            </div>
+
+            <div class="message-list" id="message-list">
+                <!-- 消息将在此处渲染 -->
+            </div>
+
+            <div class="message-input-area">
+                <div class="toolbar">
+                    <button onclick="toggleEmoji()" title="表情">😀</button>
+                    <label for="image-upload" title="发送图片">
+                        📷
+                        <input type="file" id="image-upload" accept="image/*" hidden onchange="uploadImage(this)">
+                    </label>
+                </div>
+                <div id="emoji-picker" class="emoji-picker hidden">
+                    <span onclick="addEmoji('😊')">😊</span><span onclick="addEmoji('😂')">😂</span>
+                    <span onclick="addEmoji('👍')">👍</span><span onclick="addEmoji('❤️')">❤️</span>
+                    <span onclick="addEmoji('🙌')">🙌</span><span onclick="addEmoji('🤔')">🤔</span>
+                    <span onclick="addEmoji('🔥')">🔥</span><span onclick="addEmoji('✨')">✨</span>
+                </div>
+                <div class="input-wrapper">
+                    <textarea id="msg-input" placeholder="输入消息..." onkeydown="handleKeyDown(event)"></textarea>
+                    <button id="send-btn" onclick="sendMessage()">发送</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="js/app.js"></script>
+</body>
+</html>
