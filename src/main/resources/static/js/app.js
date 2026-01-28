@@ -212,9 +212,9 @@ function appendMessage(sender, content, side, isSystem, msgType = 1, time = null
         // 修复 bug: 历史记录中的图片可能是相对路径，需要拼接完整 URL
         console.log("content: ", content);
         let imgSrc = content;
-        if (content.startsWith('/uploads/')) {
+        /*if (content.startsWith('/uploads/')) {
             imgSrc = HTTP_BASE_URL + content;
-        }
+        }*/
         innerHTML = `<img src="${imgSrc}" alt="图片" onclick="window.open(this.src)">`;
     } else {
         // 如果是文本消息，进行基本的安全防御处理并显示
