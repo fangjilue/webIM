@@ -9,6 +9,7 @@ let currentTargetId = null; // 当前正在对话的目标 ID
 let heartbeatTimer = null;  // 心跳定时器句柄
 
 const WS_URL = "ws://localhost:8888/ws"; // WebSocket 服务端地址
+const HTTP_BASE_URL = "http://localhost:8080"; // HTTP 服务端地址
 
 /**
  * 模拟登录逻辑
@@ -48,7 +49,9 @@ function initWebSocket() {
         }));
 
         // 启动心跳机制：每隔 30 秒发送一次报活消息，防止因连接空闲被后端踢下线
+        // 1. 检查并清理旧的定时器，如果 heartbeatTimer 变量里存有旧的定时器 ID，就把它停掉
         if (heartbeatTimer) clearInterval(heartbeatTimer);
+        // 2. 开启一个新的定时器，并将新的 ID 赋值给变量
         heartbeatTimer = setInterval(() => {
             if (socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({ type: "HEARTBEAT" }));
@@ -183,7 +186,7 @@ async function loadHistory() {
         list.innerHTML = ""; // 先清空老旧试图，重新根据历史数据渲染
         history.forEach(m => {
             const side = m.fromId == currentUserId ? "mine" : "other";
-            appendMessage(m.fromId, m.content, side, false, m.msgType);
+            appendMessage(m.fromId, m.content, side, false, m.msgType, m.createTime);
         });
     } catch (e) {
         console.error("拉取历史记录失败:", e);
@@ -198,7 +201,7 @@ async function loadHistory() {
  * @param {boolean} isSystem 是否是系统消息
  * @param {number} msgType 消息类型 (1:文本, 3:图片)
  */
-function appendMessage(sender, content, side, isSystem, msgType = 1) {
+function appendMessage(sender, content, side, isSystem, msgType = 1, time = null) {
     const list = document.getElementById('message-list');
     const msgDiv = document.createElement('div');
     msgDiv.className = `msg ${side} ${isSystem ? 'system' : ''}`;
@@ -206,13 +209,20 @@ function appendMessage(sender, content, side, isSystem, msgType = 1) {
     let innerHTML = "";
     if (msgType === 3) {
         // 如果是图片，渲染为 img 标签，支持点击查看原图
-        innerHTML = `<img src="${content}" alt="图片" onclick="window.open(this.src)">`;
+        // 修复 bug: 历史记录中的图片可能是相对路径，需要拼接完整 URL
+        console.log("content: ", content);
+        let imgSrc = content;
+        if (content.startsWith('/uploads/')) {
+            imgSrc = HTTP_BASE_URL + content;
+        }
+        innerHTML = `<img src="${imgSrc}" alt="图片" onclick="window.open(this.src)">`;
     } else {
         // 如果是文本消息，进行基本的安全防御处理并显示
         innerHTML = `<div class="text">${content}</div>`;
     }
 
-    innerHTML += `<span class="time">${new Date().toLocaleTimeString()}</span>`;
+    const date = time ? time : (new Date()).toLocaleString();
+    innerHTML += `<span class="time">${date}</span>`;
     msgDiv.innerHTML = innerHTML;
 
     list.appendChild(msgDiv);
