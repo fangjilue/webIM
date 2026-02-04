@@ -5,6 +5,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.webim.entity.Message;
 import com.webim.mapper.ChatMapper;
 import com.webim.service.AgentService;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
@@ -36,6 +37,7 @@ public class ChatHandler extends SimpleChannelInboundHandler<TextWebSocketFrame>
 
     private final AgentService agentService;
     private final ChatMapper chatMapper;
+    private final StringRedisTemplate redisTemplate;
 
     /**
      * Channel 属性 Key，用于在 Channel 中绑定用户 ID 和类型
@@ -43,9 +45,10 @@ public class ChatHandler extends SimpleChannelInboundHandler<TextWebSocketFrame>
     private static final AttributeKey<String> USER_ID_KEY = AttributeKey.valueOf("userId");
     private static final AttributeKey<Integer> USER_TYPE_KEY = AttributeKey.valueOf("userType");
 
-    public ChatHandler(AgentService agentService, ChatMapper chatMapper) {
+    public ChatHandler(AgentService agentService, ChatMapper chatMapper, StringRedisTemplate redisTemplate) {
         this.agentService = agentService;
         this.chatMapper = chatMapper;
+        this.redisTemplate = redisTemplate;
     }
 
     @Override
@@ -144,7 +147,17 @@ public class ChatHandler extends SimpleChannelInboundHandler<TextWebSocketFrame>
             // 目标用户在线，直接通过 WebSocket 推送
             targetChannel.writeAndFlush(new TextWebSocketFrame(resp.toJSONString()));
         } else {
-            log.info("目标用户 {} 目前不在线，消息已落库，待用户上线后拉取历史记录", toId);
+            // 本地未找到目标用户，尝试通过 Redis 广播消息
+            JSONObject redisMsg = new JSONObject();
+            redisMsg.put("toId", toId);
+            redisMsg.put("toType", targetType); // 保持类型一致
+            redisMsg.put("fromId", fromId);
+            redisMsg.put("content", content);
+            redisMsg.put("msgType", msgType);
+
+            // 这里的 Topic 需要引用配置类中的常量，或者直接使用字符串
+            redisTemplate.convertAndSend("webim-chat-topic", redisMsg.toJSONString());
+            log.info("本地未找到用户 {}，已通过 Redis 广播消息", toId);
         }
     }
 
@@ -202,5 +215,23 @@ public class ChatHandler extends SimpleChannelInboundHandler<TextWebSocketFrame>
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
         log.error("WebSocket 链路发生异常，连接将被断开", cause);
         ctx.close();
+    }
+
+    /**
+     * 供 RedisMessageListener 调用，将跨服消息推送到本地用户
+     */
+    public static void pushMessageToLocalUser(Long toId, Integer toType, Long fromId, String content, Integer msgType) {
+        Channel targetChannel = userChannels.get(toType + ":" + toId);
+        if (targetChannel != null && targetChannel.isActive()) {
+            JSONObject resp = new JSONObject();
+            resp.put("type", "RECEIVE");
+            resp.put("fromId", fromId);
+            resp.put("content", content);
+            resp.put("msgType", msgType);
+            resp.put("timestamp", System.currentTimeMillis());
+
+            targetChannel.writeAndFlush(new TextWebSocketFrame(resp.toJSONString()));
+            log.debug("已将 Redis 广播消息推送到本地用户: {}", toId);
+        }
     }
 }
